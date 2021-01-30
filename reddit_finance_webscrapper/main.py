@@ -6,14 +6,16 @@ from collections import Counter
 import numpy as np
 import requests
 import csv
-import pygsheets
-import pandas
+import re
+
+stock_dict = Counter()
 
 
 def grab_html():
     url = "https://www.reddit.com/r/wallstreetbets/search/?q=flair%3A%22Daily%20Discussion%22&restrict_sr=1&sort=new"
     driver = webdriver.Chrome(ChromeDriverManager().install())
     driver.get(url)
+
     return driver
 
 
@@ -25,17 +27,17 @@ def grab_link(driver):
     # We want all objects with attribute 'class'
     links = driver.find_elements_by_xpath('//*[@class="_eYtD2XCVieq6emjKBH3m"]')
     for a in links:
-        print(a.text)
         try:
-            # Check if it's a DD or weekend thread
-            # Then split up text to only get last three parts
-            # Conver to datetime then compare to yesterdays date
-            # If equal, grab link from parent element
+            """
+            Check if it's a DD or weekend thread
+            Then split up text to only get last three parts
+            Conver to datetime then compare to yesterdays date
+            If equal, grab link from parent element
+            """
             if a.text.startswith("Daily Discussion Thread"):
                 # TODO: Search for date, account for edge case
                 # e.g. "Daily Discussion Thread for January 27, 2021 - Part III"
                 thread_date = "".join(a.text.split(" ")[-3:])
-                print(thread_date)
                 parsed = parse(thread_date)
                 if parse(str(yesterday)) == parsed:
                     link = a.find_element_by_xpath("../..").get_attribute("href")
@@ -65,12 +67,14 @@ def grab_link(driver):
         except ValueError:
             pass
 
-    # Grab only thread id
-    print(link)
-    # TODO: Error handling
-    stock_link = link.split("/")[-3]
-    driver.close()
-    print(stock_link)
+    try:
+        # Grab only thread id
+        stock_link = link.split("/")[-3]
+        driver.close()
+    except ValueError:
+        stock_link = ""
+        driver.close()
+
     return stock_link
 
 
@@ -79,6 +83,7 @@ def grab_commentid_list(stock_link):
         f"https://api.pushshift.io/reddit/submission/comment_ids/{stock_link}"
     )
     raw_comment_list = html.json()
+
     return raw_comment_list
 
 
@@ -98,50 +103,74 @@ def grab_stocklist():
         reader = csv.reader(f)
         for row in reader:
             stocks_list.append(row[0])
+
     return stocks_list
 
 
-def get_comments(comment_list):
-    html = requests.get(
-        f"https://api.pushshift.io/reddit/comment/search?ids={comment_list}&fields=body&size=1000"
-    )
-    newcomments = html.json()
-    return newcomments
+def get_comments(comment_ids_list):
+    comments = {}
+    try:
+        # Get each comment's body text
+        html = requests.get(
+            f"https://api.pushshift.io/reddit/comment/search?ids={comment_ids_list}&fields=body&size=500"
+        )
+        comments = html.json()
+    except ValueError:
+        print("error getting comments")
+        pass
+
+    return comments
 
 
-def get_stock_list(newcomments, stocks_list):
+def findWholeWord(w):
+    return re.compile(r"\b({0})\b".format(w), flags=re.IGNORECASE).search
+
+
+def count_stock_tickers(comments_text, stocks_list):
+    print("counting")
     # Count # of times ticket has been mentioned
-    stock_dict = Counter()
+    global stock_dict
     # Scan for each stock ticker in comment body then add to stock_dict
-    for a in newcomments["data"]:
+    for a in comments_text["data"]:
         for ticker in stocks_list:
-            if ticker in a["body"]:
+            # Check for whole words
+            if findWholeWord(ticker)(a["body"]):
                 stock_dict[ticker] += 1
-    return stock_dict
+
+    # return stock_dict
 
 
-def grab_stock_count(stock_dict, raw_comment_list):
-    orig_list = np.array(raw_comment_list["data"])
-    # Can only push 1000 ids at a time
-    comment_list = ",".join(orig_list[0:1000])
-    remove_me = slice(0, 1000)
-    cleaned = np.delete(orig_list, remove_me)
+def grab_stock_count(raw_comment_list, stocks_list):
+    # comments_body_list = []
+    orig_list = np.array(raw_comment_list["data"])[0:1000]
+    print(f"{len(orig_list)} ids")
+    # Can only push 500 ids at a time
+    comment_list = ",".join(orig_list[0:500])
+    remove_me = slice(0, 500)
+    cleaned = orig_list
     i = 0
+    # Loop through array 500 each
+    # Get comment text then count tickers
     while i < len(cleaned):
         print(len(cleaned))
         cleaned = np.delete(cleaned, remove_me)
-        new_comments_list = ",".join(cleaned[0:1000])
-        newcomments = get_comments(new_comments_list)
-        get_stock_list(newcomments, stocks_list)
-    stock = dict(stock_dict)
-    return stock
+        comments_ids_list = ",".join(cleaned[0:5])
+        comments_text = get_comments(comments_ids_list)
+        # comments_body_list.append(comments_text["data"])
+        # TODO Slow after initial count
+        count_stock_tickers(comments_text, stocks_list)
+
+    stocks = dict(stock_dict)
+    return stocks
 
 
 def write_csv(stock):
-    # Access each stock ticker and value
-    # Invoke a sorted dictionary method to sort them alphanumerically first
-    # Then zip
-    # Create list of tuples
+    """
+    Access each stock ticker and value
+    Invoke a sorted dictionary method to sort them alphanumerically first
+    Then zip
+    Create list of tuples
+    """
     data = list(zip(sorted(stock.keys()), sorted(stock.values())))
     with open("redditStocks.csv", "w") as w:
         writer = csv.writer(w, lineterminator="\n")
@@ -150,21 +179,25 @@ def write_csv(stock):
             writer.writerow(a)
 
 
-def output_to_google(stock):
-    df = pd.fromdict(stock)
-    gc = pygsheets.authorize(client_secret="client_secret_1.json")
-    key = "xxxxxx"
-    sheet = gc.open_by_key(key)
-    worksheet = sheet.add_worksheet("Reddit Stock list")
-    worksheet.set_dataframe(df, "A1")
+# def output_to_google(stock):
+#     df = pd.fromdict(stock)
+#     gc = pygsheets.authorize(client_secret="client_secret_1.json")
+#     key = "xxxxxx"
+#     sheet = gc.open_by_key(key)
+#     worksheet = sheet.add_worksheet("Reddit Stock list")
+#     worksheet.set_dataframe(df, "A1")
 
 
 if __name__ == "__main__":
     driver = grab_html()
+    print("Grabbing discussion id...")
     stock_link = grab_link(driver)
-    comment_list = grab_commentid_list(stock_link)
-    stockslist = grab_stocklist()
-    newcomments = get_comments(comment_list)
-    stock_dict = get_stock_list(new_comments, stocks_list)
-    stock = grab_stock_count(stock_dict)
-    write_csv(stock)
+    print(stock_link)
+    print("Grabbing comment ids...")
+    comment_ids_list = grab_commentid_list(stock_link)
+    print("Grabbing stock list...")
+    stocks_list = grab_stocklist()
+    print("Gathering stocks from comments...")
+    stocks = grab_stock_count(comment_ids_list, stocks_list)
+    print(stocks)
+    write_csv(stock_dict)
