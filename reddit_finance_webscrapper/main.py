@@ -123,26 +123,27 @@ def get_comments(comment_ids_list):
 
 
 def findWholeWord(w):
-    return re.compile(r"\b({0})\b".format(w), flags=re.IGNORECASE).search
+    return re.compile(r"\b({0})\b".format(w)).search
+    # return re.compile(r"\b({0})\b".format(w), flags=re.IGNORECASE).search
 
 
 def count_stock_tickers(comments_text, stocks_list):
-    print("counting")
+    # print("counting", len(comments_text["data"]))
     # Count # of times ticket has been mentioned
     global stock_dict
     # Scan for each stock ticker in comment body then add to stock_dict
     for a in comments_text["data"]:
-        for ticker in stocks_list:
-            # Check for whole words
-            if findWholeWord(ticker)(a["body"]):
-                stock_dict[ticker] += 1
-
-    # return stock_dict
+        for w in re.findall(r"\w+", a["body"]):
+            if w in stocks_list:
+                stock_dict[w] += 1
+        # for ticker in stocks_list:
+        #     # Check for whole words
+        #     if findWholeWord(ticker)(a["body"]):
+        #         stock_dict[ticker] += 1
 
 
 def grab_stock_count(raw_comment_list, stocks_list):
-    # comments_body_list = []
-    orig_list = np.array(raw_comment_list["data"])[0:1000]
+    orig_list = np.array(raw_comment_list["data"])
     print(f"{len(orig_list)} ids")
     # Can only push 500 ids at a time
     comment_list = ",".join(orig_list[0:500])
@@ -154,10 +155,8 @@ def grab_stock_count(raw_comment_list, stocks_list):
     while i < len(cleaned):
         print(len(cleaned))
         cleaned = np.delete(cleaned, remove_me)
-        comments_ids_list = ",".join(cleaned[0:5])
+        comments_ids_list = ",".join(cleaned[0:500])
         comments_text = get_comments(comments_ids_list)
-        # comments_body_list.append(comments_text["data"])
-        # TODO Slow after initial count
         count_stock_tickers(comments_text, stocks_list)
 
     stocks = dict(stock_dict)
@@ -179,25 +178,17 @@ def write_csv(stock):
             writer.writerow(a)
 
 
-# def output_to_google(stock):
-#     df = pd.fromdict(stock)
-#     gc = pygsheets.authorize(client_secret="client_secret_1.json")
-#     key = "xxxxxx"
-#     sheet = gc.open_by_key(key)
-#     worksheet = sheet.add_worksheet("Reddit Stock list")
-#     worksheet.set_dataframe(df, "A1")
-
-
 if __name__ == "__main__":
     driver = grab_html()
     print("Grabbing discussion id...")
     stock_link = grab_link(driver)
     print(stock_link)
     print("Grabbing comment ids...")
-    comment_ids_list = grab_commentid_list(stock_link)
+    comment_ids_list = grab_commentid_list("lbl62i")
     print("Grabbing stock list...")
     stocks_list = grab_stocklist()
     print("Gathering stocks from comments...")
     stocks = grab_stock_count(comment_ids_list, stocks_list)
-    print(stocks)
-    write_csv(stock_dict)
+    # print(stocks)
+    print("Writing CSV...")
+    write_csv(stocks)
