@@ -13,4 +13,7 @@
 - Gather current stock tickets on a monthly? interval
 - Run daily lambda function and write to s3 bucket
 
+Export the project dependencies as requirements.txt
+`poetry export -f requirements.txt > requirements.txt --without-hashes`
+
 GoLang version coming soon...

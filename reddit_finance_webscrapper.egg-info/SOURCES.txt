@@ -1,7 +1,7 @@
 README.md
 setup.py
 reddit_finance_webscrapper/__init__.py
-reddit_finance_webscrapper/main.py
+reddit_finance_webscrapper/handler.py
 reddit_finance_webscrapper.egg-info/PKG-INFO
 reddit_finance_webscrapper.egg-info/SOURCES.txt
 reddit_finance_webscrapper.egg-info/dependency_links.txt

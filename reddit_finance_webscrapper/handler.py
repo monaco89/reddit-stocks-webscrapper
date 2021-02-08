@@ -178,7 +178,7 @@ def write_csv(stock):
             writer.writerow(a)
 
 
-if __name__ == "__main__":
+def main:
     driver = grab_html()
     print("Grabbing discussion id...")
     stock_link = grab_link(driver)
@@ -192,3 +192,6 @@ if __name__ == "__main__":
     # print(stocks)
     print("Writing CSV...")
     write_csv(stocks)
+
+if __name__ == "__main__":
+    main()

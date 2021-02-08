@@ -1,0 +1,11 @@
+{
+  "name": "reddit-finance-webscrapper",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "https://github.com/monaco89/reddit-stocks-webscrapper.git",
+  "author": "monaco89 <nick.monaco15@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "serverless-python-requirements": "^5.1.0"
+  }
+}
