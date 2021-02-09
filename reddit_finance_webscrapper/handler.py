@@ -179,9 +179,10 @@ def write_csv(stock):
         for a in data:
             writer.writerow(a)
 
+
 def upload_to_S3():
-    s3 = boto3.client('s3')
-    bucket = s3.Bucket(os.environ['BUCKET_NAME'])
+    s3 = boto3.client("s3")
+    bucket = s3.Bucket(os.environ["BUCKET_NAME"])
 
     try:
         bucket.upload_file("/tmp/redditStocks.csv", "redditStocks.csv")
@@ -193,10 +194,9 @@ def upload_to_S3():
     except NoCredentialsError:
         print("Credentials not available")
         return False
-                    
 
 
-def main:
+def main():
     driver = grab_html()
     print("Grabbing discussion id...")
     stock_link = grab_link(driver)
@@ -211,6 +211,7 @@ def main:
     print("Writing CSV...")
     write_csv(stocks)
     upload_to_S3()
+
 
 if __name__ == "__main__":
     main()

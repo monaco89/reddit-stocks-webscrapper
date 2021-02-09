@@ -2,9 +2,7 @@ version: 0.2
 
 env:
   variables:
-    ENVIRONMENT: test
-    # Set other neccessary environment variables here
-    # These can also be set in AWS CodeBuild Console
+    ENVIRONMENT: dev
 phases:
   install:
     runtime-versions:
@@ -12,7 +10,9 @@ phases:
     commands:
       - python3 -m venv /root/venv
       - . /root/venv/bin/activate
-      - pip3 install pytest && pip3 install poetry
+      - pip install --upgrade pip
+      # - pip3 install pytest && pip3 install poetry
+      - pip3 install poetry
       - poetry install
       - yarn install
       - yarn global add serverless
