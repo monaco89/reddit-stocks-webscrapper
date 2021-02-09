@@ -211,6 +211,7 @@ def main():
     print("Writing CSV...")
     write_csv(stocks)
     upload_to_S3()
+    # Send SES: https://github.com/amazon-archives/serverless-app-examples/blob/master/python/ses-notification-python/lambda_function.py
 
 
 if __name__ == "__main__":
