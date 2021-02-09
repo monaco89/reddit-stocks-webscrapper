@@ -7,6 +7,8 @@ import numpy as np
 import requests
 import csv
 import re
+import boto3
+import os
 
 stock_dict = Counter()
 
@@ -171,11 +173,27 @@ def write_csv(stock):
     Create list of tuples
     """
     data = list(zip(sorted(stock.keys()), sorted(stock.values())))
-    with open("redditStocks.csv", "w") as w:
+    with open("/tmp/redditStocks.csv", "w") as w:
         writer = csv.writer(w, lineterminator="\n")
         writer.writerow(["Stock", "Number of Mentions"])
         for a in data:
             writer.writerow(a)
+
+def upload_to_S3():
+    s3 = boto3.client('s3')
+    bucket = s3.Bucket(os.environ['BUCKET_NAME'])
+
+    try:
+        bucket.upload_file("/tmp/redditStocks.csv", "redditStocks.csv")
+        print("Upload Successful")
+        return True
+    except FileNotFoundError:
+        print("The file was not found")
+        return False
+    except NoCredentialsError:
+        print("Credentials not available")
+        return False
+                    
 
 
 def main:
@@ -192,6 +210,7 @@ def main:
     # print(stocks)
     print("Writing CSV...")
     write_csv(stocks)
+    upload_to_S3()
 
 if __name__ == "__main__":
     main()

@@ -5,6 +5,15 @@ service: reddit-finance-webscrapper
 provider:
   name: aws
   runtime: python3.8
+  iamRoleStatements:
+    - Effect: "Allow"
+      Action:
+       - s3:PutObject
+      Resource: ${env:BUCKET_ARN}/*
+    # - Effect: "Deny"
+    #   Action:
+    #     - s3:DeleteObject
+    #   Resource: arn:aws:s3:::${env:BUCKET_ARN}/*
 
 functions:
   scrapper:
